@@ -12,13 +12,12 @@ def index_documents(documents):
 
     vector_store = get_vector_store()
     
+    # HuggingFace embeddings run locally — no API rate limit, no sleep needed.
+    # (Note: if you ever switch to a cloud embedding API like Gemini/OpenAI, re-add throttling here)
     batch_size = 50
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
         vector_store.add_documents(batch)
-        if i + batch_size < len(chunks):
-            import time
-            time.sleep(5) # Throttle to respect Gemini free-tier 100RPM embed limit
 
     return len(chunks)
 
