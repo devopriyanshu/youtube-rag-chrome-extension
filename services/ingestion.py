@@ -27,8 +27,9 @@ def fetch_transcript(video_id: str):
             except Exception as meta_e:
                 print(f"Error fetching video metadata: {meta_e}")
 
-        # New API usage
-        transcript_list = YouTubeTranscriptApi().list(video_id)
+        # youtube-transcript-api v1.x: instantiate the class first, then call .list()
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(video_id)
         fetched_transcript = transcript_list.find_transcript(['en']).fetch()
 
         documents = []
