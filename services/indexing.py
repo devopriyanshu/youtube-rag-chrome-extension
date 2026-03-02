@@ -12,12 +12,17 @@ def index_documents(documents):
     chunks = splitter.split_documents(documents)
 
     vector_store = get_vector_store()
-    
-    # Jina AI is a cloud API with strict request size limits — keep batches small.
-    # Retry with exponential backoff to handle transient connection drops.
-    batch_size = 10
+
+    # batch_size=20: ~30k chars per Jina request — well within limits, 4× fewer
+    # API calls vs batch_size=5. A 10-min video (~60 chunks) = 3 calls, not 12.
+    # No sleep between batches: Jina free tier allows 500 req/min — we never get close.
+    batch_size = 20
+    total_batches = (len(chunks) + batch_size - 1) // batch_size
+
     for i in range(0, len(chunks), batch_size):
+        batch_num = i // batch_size + 1
         batch = chunks[i:i + batch_size]
+        print(f"[indexing] Embedding batch {batch_num}/{total_batches} ({len(batch)} chunks)...")
         for attempt in range(3):
             try:
                 vector_store.add_documents(batch)
@@ -26,7 +31,7 @@ def index_documents(documents):
                 if attempt == 2:
                     raise
                 wait = 2 ** attempt
-                print(f"[indexing] Batch {i//batch_size} failed (attempt {attempt+1}): {e}. Retrying in {wait}s...")
+                print(f"[indexing] Batch {batch_num} failed (attempt {attempt+1}): {e}. Retrying in {wait}s...")
                 time.sleep(wait)
 
     return len(chunks)

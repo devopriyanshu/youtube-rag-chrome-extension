@@ -1,16 +1,19 @@
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 from core.llm import get_llm
 from memory.session_memory import get_history, add_message
 
 
 SYSTEM_PROMPT = """
-You are an expert YouTube video assistant. Your primary goal is to provide comprehensive, detailed, and accurate answers based EXCLUSIVELY on the provided transcript context.
+You are an expert YouTube video assistant. Answer questions based EXCLUSIVELY on the provided transcript context.
 
-Instructions:
-1. Thoroughly analyze the user's question against the provided chronological video transcript.
-2. Synthesize a detailed, fluent, and coherent response. Provide rich context; do not be overly brief.
-3. ALWAYS cite specific timestamps from the transcript to support your claims (e.g., "[01:23-01:45] The speaker mentions...").
-4. If the topic is not discussed in the transcript context, state clearly that you cannot answer based on the video. Do NOT hallucinate information.
+**Response Formatting Rules (follow strictly):**
+1. Start with a short 1-2 sentence direct answer or summary.
+2. Use bullet points (`-`) for lists, steps, features, or multiple points — never write dense walls of text.
+3. Use **bold** to highlight key terms, names, tools, or important concepts.
+4. Group related timestamps together at the end of each bullet or paragraph like this: `[MM:SS-MM:SS]`.
+5. For complex questions, use a short heading (e.g., `## Key Points`) to section your response.
+6. Keep each bullet concise — 1–2 sentences max.
+7. If the topic is NOT in the transcript, say so clearly — do NOT hallucinate.
 """
 
 
@@ -71,18 +74,28 @@ def generate_answer(session_id, question, docs):
     context = format_context(sorted_docs)
     chat_history = get_history(session_id)
 
+    # Format chat history as a plain text block rather than appending raw
+    # HumanMessage/AIMessage objects — langchain-google-genai 4.x serializes
+    # those as Gemini `Content` objects which triggers Pydantic warnings.
+    history_block = ""
+    if chat_history:
+        lines = []
+        for msg in chat_history:
+            prefix = "User" if msg["role"] == "user" else "Assistant"
+            lines.append(f"{prefix}: {msg['content']}")
+        history_block = "\n\nConversation History:\n" + "\n".join(lines)
+
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        SystemMessage(content=f"Video Metadata:\n{video_metadata_str}Transcript Context:\n{context}")
+        SystemMessage(
+            content=(
+                f"Video Metadata:\n{video_metadata_str}"
+                f"Transcript Context:\n{context}"
+                f"{history_block}"
+            )
+        ),
+        HumanMessage(content=question),
     ]
-
-    for msg in chat_history:
-        if msg["role"] == "user":
-            messages.append(HumanMessage(content=msg["content"]))
-        else:
-            messages.append(AIMessage(content=msg["content"]))
-
-    messages.append(HumanMessage(content=question))
 
     response = llm.invoke(messages)
 
