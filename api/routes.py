@@ -7,6 +7,10 @@ from vectorstore.qdrant_store import check_video_exists
 
 router = APIRouter()
 
+@router.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 class AskRequest(BaseModel):
     session_id: str
     video_id: str
