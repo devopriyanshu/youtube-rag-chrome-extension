@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Context Chat",
+  "version": "1.0",
+  "description": "Chat with YouTube videos using AI",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open Chat"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*",
+    "https://youtube-rag-chrome-plugin.onrender.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/watch*"],
+      "js": ["content.js"]
+    }
+  ]
+}
